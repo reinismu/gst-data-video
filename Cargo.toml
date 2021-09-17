@@ -9,6 +9,7 @@ repository = "https://github.com/reinismu/gst-data-video"
 
 [dependencies]
 bytes = "1.1.0"
+fastrand = "1.5.0"
 glib = "0.14.5"
 gst = { version = "0.17.1", package = "gstreamer"}
 gst-base = { version = "0.17.1", package = "gstreamer-base" }

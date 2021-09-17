@@ -1,6 +1,7 @@
 use gst::glib;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
+use gst::ClockTime;
 use gst::{gst_debug, gst_info, gst_warning};
 use gst_base::prelude::*;
 use gst_base::subclass::prelude::*;
@@ -22,11 +23,15 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
 
 struct State {
     info: Option<gst_video::VideoInfo>,
+    current_frame_num: u64,
 }
 
 impl Default for State {
     fn default() -> State {
-        State { info: None }
+        State {
+            info: None,
+            current_frame_num: 0,
+        }
     }
 }
 
@@ -77,7 +82,14 @@ impl ElementImpl for DataSrc {
             let caps = gst::Caps::new_simple(
                 "video/x-raw",
                 &[
-                    ("format", &gst_video::VideoFormat::Uyvy.to_str()),
+                    (
+                        "format",
+                        &gst::List::new(&[
+                            &gst_video::VideoFormat::Uyvy.to_str(),
+                            &gst_video::VideoFormat::Argb.to_str(),
+                            &gst_video::VideoFormat::Bgra.to_str(),
+                        ]),
+                    ),
                     ("width", &gst::IntRange::<i32>::new(1920, i32::MAX)),
                     ("height", &gst::IntRange::<i32>::new(1080, i32::MAX)),
                     (
@@ -136,7 +148,10 @@ impl BaseSrcImpl for DataSrc {
 
         let mut state = self.state.lock().unwrap();
 
-        *state = State { info: Some(info) };
+        *state = State {
+            info: Some(info),
+            current_frame_num: state.current_frame_num,
+        };
 
         drop(state);
 
@@ -148,7 +163,7 @@ impl BaseSrcImpl for DataSrc {
 
 impl PushSrcImpl for DataSrc {
     fn create(&self, element: &Self::Type) -> Result<gst::Buffer, gst::FlowError> {
-        let state = self.state.lock().unwrap();
+        let mut state = self.state.lock().unwrap();
         let info = match state.info {
             None => {
                 gst::element_error!(element, gst::CoreError::Negotiation, ["Have no caps yet"]);
@@ -158,21 +173,32 @@ impl PushSrcImpl for DataSrc {
         };
 
         let buffer_size = (info.width() as usize) * (info.height() as usize) * 4;
-
         // Text to encode
         let input = "Hello world";
+
+        let delta = (1000 / info.fps().to_integer()) as u64;
 
         let mut buffer = gst::Buffer::with_size(buffer_size).unwrap();
         {
             let buffer = buffer.get_mut().unwrap();
 
+            buffer.set_pts(ClockTime::from_mseconds(state.current_frame_num * delta));
+
+            state.current_frame_num += 1;
+
             // Map the buffer writable and create the actual samples
             let mut map = buffer.map_writable().unwrap();
             let mut data = map.as_mut_slice();
+            let mut v = 0;
+            (0..buffer_size).for_each(|i| {
+                data[i] = v;
+                v += 1;
+            });
 
-            data.put_u32(input.len() as u32);
-            data.put(input.as_bytes());
+            // data.put_u32(input.len() as u32);
+            // data.put(input.as_bytes());
         }
+
         drop(state);
 
         gst_warning!(

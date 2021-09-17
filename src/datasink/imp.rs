@@ -1,5 +1,6 @@
 use bytes::Buf;
 use gst::glib;
+use gst::gst_warning;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
 use gst::{gst_debug, gst_info};
@@ -51,7 +52,14 @@ impl ElementImpl for DataSink {
             let caps = gst::Caps::new_simple(
                 "video/x-raw",
                 &[
-                    ("format", &gst_video::VideoFormat::Uyvy.to_str()),
+                    (
+                        "format",
+                        &gst::List::new(&[
+                            &gst_video::VideoFormat::Uyvy.to_str(),
+                            &gst_video::VideoFormat::Argb.to_str(),
+                            &gst_video::VideoFormat::Bgra.to_str(),
+                        ]),
+                    ),
                     ("width", &gst::IntRange::<i32>::new(1920, i32::MAX)),
                     ("height", &gst::IntRange::<i32>::new(1080, i32::MAX)),
                     (
@@ -112,9 +120,9 @@ impl VideoSinkImpl for DataSink {
 
         let mut data = map.as_slice();
 
-        let length = data.get_u32() as usize;
-        let content = read_null_terminated_string(&data[..length]);
-        gst_info!(CAT, obj: element, "Got content {}", content,);
+        // let length = data.get_u32() as usize;
+        // let content = read_null_terminated_string(&data[..length]);
+        gst_warning!(CAT, obj: element, "Got length {:?}", &data[..300]);
 
         Ok(gst::FlowSuccess::Ok)
     }
