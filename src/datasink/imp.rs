@@ -11,6 +11,8 @@ use std::i32;
 
 use once_cell::sync::Lazy;
 
+use crate::utils::convert_back_with_zeros;
+
 static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     gst::DebugCategory::new(
         "datasink",
@@ -120,9 +122,15 @@ impl VideoSinkImpl for DataSink {
 
         let mut data = map.as_slice();
 
-        // let length = data.get_u32() as usize;
-        // let content = read_null_terminated_string(&data[..length]);
-        gst_warning!(CAT, obj: element, "Got length {:?}", &data[..300]);
+        let length = convert_back_with_zeros(data.get_u32()) as usize;
+
+        if length > buffer.size() {
+            return Ok(gst::FlowSuccess::Ok);
+        }
+
+        let content = read_null_terminated_string(&data[..length]);
+        gst_warning!(CAT, obj: element, "Got length {:?}", length);
+        gst_warning!(CAT, obj: element, "Got content {:?}", content);
 
         Ok(gst::FlowSuccess::Ok)
     }

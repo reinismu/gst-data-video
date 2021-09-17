@@ -13,6 +13,8 @@ use once_cell::sync::Lazy;
 
 use bytes::BufMut;
 
+use crate::utils::convert_without_zeros;
+
 static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     gst::DebugCategory::new(
         "datasrc",
@@ -189,14 +191,14 @@ impl PushSrcImpl for DataSrc {
             // Map the buffer writable and create the actual samples
             let mut map = buffer.map_writable().unwrap();
             let mut data = map.as_mut_slice();
-            let mut v = 0;
-            (0..buffer_size).for_each(|i| {
-                data[i] = v;
-                v += 1;
-            });
+            // let mut v = 0;
+            // (0..buffer_size).for_each(|i| {
+            //     data[i] = v;
+            //     v += 1;
+            // });
 
-            // data.put_u32(input.len() as u32);
-            // data.put(input.as_bytes());
+            data.put_u32(convert_without_zeros(input.len() as u32));
+            data.put(input.as_bytes());
         }
 
         drop(state);

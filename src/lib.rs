@@ -2,6 +2,7 @@ use gst::glib;
 
 mod datasink;
 mod datasrc;
+mod utils;
 
 fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
     datasink::register(plugin)?;
