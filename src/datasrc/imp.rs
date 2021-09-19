@@ -2,7 +2,7 @@ use gst::glib;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
 use gst::ClockTime;
-use gst::{gst_debug, gst_info, gst_warning};
+use gst::{gst_debug, gst_info};
 use gst_base::prelude::*;
 use gst_base::subclass::prelude::*;
 
@@ -12,6 +12,7 @@ use std::{i32, u32};
 use once_cell::sync::Lazy;
 
 use bytes::BufMut;
+use tiny_http::{Response, Server};
 
 use crate::utils::convert_without_zeros;
 
@@ -37,10 +38,18 @@ impl Default for State {
     }
 }
 
-// Struct containing all the element data
-#[derive(Default)]
 pub struct DataSrc {
     state: Mutex<State>,
+    server: Mutex<Server>,
+}
+
+impl Default for DataSrc {
+    fn default() -> DataSrc {
+        DataSrc {
+            state: Default::default(),
+            server: Mutex::new(Server::http("0.0.0.0:9600").unwrap()),
+        }
+    }
 }
 
 impl DataSrc {}
@@ -174,9 +183,19 @@ impl PushSrcImpl for DataSrc {
             Some(ref info) => info.clone(),
         };
 
+        let server = self.server.lock().unwrap();
+
+        let mut input = String::new();
+
+        let request = server.try_recv().unwrap();
+        if let Some(request) = request {
+            let mut request = request;
+            request.as_reader().read_to_string(&mut input).unwrap();
+            let response = Response::from_string("Received");
+            request.respond(response).unwrap();
+        }
+
         let buffer_size = (info.width() as usize) * (info.height() as usize) * 4;
-        // Text to encode
-        let input = "Hello world";
 
         let delta = (1000 / info.fps().to_integer()) as u64;
 
@@ -203,7 +222,7 @@ impl PushSrcImpl for DataSrc {
 
         drop(state);
 
-        gst_warning!(
+        gst_debug!(
             CAT,
             obj: element,
             "Created buffer with size {}",

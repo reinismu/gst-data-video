@@ -75,22 +75,22 @@ impl Convert {
         }
         output
     }
-    fn multiply_scalar_into<T>(&self, dst: &mut Vec<T>, x: u64) -> ()
+    fn multiply_scalar_into<T>(&self, dst: &mut Vec<T>, x: u64)
     where
         T: Copy + Into<u64> + FromU64,
     {
         let mut carry = 0u64;
-        for i in 0..dst.len() {
+        (0..dst.len()).for_each(|i| {
             let res = dst[i].into() * x + carry;
             carry = res / self.to;
             dst[i] = FromU64::from(res % (self.to as u64));
-        }
+        });
         while carry > 0 {
             dst.push(FromU64::from(carry % self.to));
             carry /= self.to;
         }
     }
-    fn add_into<T>(&self, dst: &mut Vec<T>, src: &Vec<T>, offset: usize) -> ()
+    fn add_into<T>(&self, dst: &mut Vec<T>, src: &[T], offset: usize)
     where
         T: Copy
             + Into<u64>

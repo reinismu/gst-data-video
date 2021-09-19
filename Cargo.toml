@@ -9,13 +9,12 @@ repository = "https://github.com/reinismu/gst-data-video"
 
 [dependencies]
 bytes = "1.1.0"
-fastrand = "1.5.0"
 glib = "0.14.5"
 gst = { version = "0.17.1", package = "gstreamer"}
 gst-base = { version = "0.17.1", package = "gstreamer-base" }
 gst-video = { version = "0.17.1", package = "gstreamer-video" }
 once_cell = "1.0"
-rand = "0.8.4"
+tiny_http = "0.8.2"
 
 [lib]
 name = "gstdatavideo"

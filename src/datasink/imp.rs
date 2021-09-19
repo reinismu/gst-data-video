@@ -1,6 +1,5 @@
 use bytes::Buf;
 use gst::glib;
-use gst::gst_warning;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
 use gst::{gst_debug, gst_info};
@@ -124,13 +123,13 @@ impl VideoSinkImpl for DataSink {
 
         let length = convert_back_with_zeros(data.get_u32()) as usize;
 
-        if length > buffer.size() {
+        if length > buffer.size() || length == 0 {
             return Ok(gst::FlowSuccess::Ok);
         }
 
         let content = read_null_terminated_string(&data[..length]);
-        gst_warning!(CAT, obj: element, "Got length {:?}", length);
-        gst_warning!(CAT, obj: element, "Got content {:?}", content);
+        gst_info!(CAT, obj: element, "Got length {:?}", length);
+        gst_info!(CAT, obj: element, "Got content {:?}", content);
 
         Ok(gst::FlowSuccess::Ok)
     }
