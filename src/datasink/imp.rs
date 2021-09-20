@@ -20,6 +20,8 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     )
 });
 
+const SIGNAL_DATA_RECEIVED: &str = "data-received";
+
 #[derive(Default)]
 pub struct DataSink {}
 
@@ -32,7 +34,21 @@ impl ObjectSubclass for DataSink {
     type ParentType = gst_video::VideoSink;
 }
 
-impl ObjectImpl for DataSink {}
+impl ObjectImpl for DataSink {
+    fn signals() -> &'static [glib::subclass::Signal] {
+        static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
+            vec![glib::subclass::Signal::builder(
+                SIGNAL_DATA_RECEIVED,
+                &[String::static_type().into()],
+                glib::types::Type::UNIT.into(),
+            )
+            .action()
+            .build()]
+        });
+
+        SIGNALS.as_ref()
+    }
+}
 
 impl ElementImpl for DataSink {
     fn metadata() -> Option<&'static gst::subclass::ElementMetadata> {
@@ -91,7 +107,6 @@ impl BaseSinkImpl for DataSink {
     // Called when starting, so we can initialize all stream-related state to its defaults
     fn start(&self, element: &Self::Type) -> Result<(), gst::ErrorMessage> {
         gst_info!(CAT, obj: element, "Started");
-
         Ok(())
     }
 
@@ -128,8 +143,11 @@ impl VideoSinkImpl for DataSink {
         }
 
         let content = read_null_terminated_string(&data[..length]);
-        gst_info!(CAT, obj: element, "Got length {:?}", length);
         gst_info!(CAT, obj: element, "Got content {:?}", content);
+
+        element
+            .emit_by_name(SIGNAL_DATA_RECEIVED, &[&content])
+            .unwrap();
 
         Ok(gst::FlowSuccess::Ok)
     }

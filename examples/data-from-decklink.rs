@@ -14,6 +14,8 @@ fn create_pipeline() -> Result<gst::Pipeline, Error> {
 
     pipeline.set_clock(Some(&system_clock)).unwrap();
 
+    // let src = gst::ElementFactory::make("datasrc", None).unwrap();
+
     let src = gst::ElementFactory::make("decklinkvideosrc", None).unwrap();
     src.set_property_from_str("device-number", "2");
     src.set_property_from_str("mode", "1080p25");
@@ -31,6 +33,14 @@ fn create_pipeline() -> Result<gst::Pipeline, Error> {
         .unwrap();
 
     let datasink = gst::ElementFactory::make("datasink", None).unwrap();
+
+    datasink
+        .connect("data-received", true, |val| {
+            let content = val[1].get::<String>().unwrap();
+            println!("Received data! {:?}", content);
+            None
+        })
+        .unwrap();
 
     pipeline
         .add_many(&[&src, &video_filter, &datasink])
@@ -65,7 +75,9 @@ fn main() -> Result<(), Error> {
             gst::MessageView::Element(element) => {
                 println!("Element: {:?}", element);
             }
-            _ => {}
+            _ => {
+                println!("Other");
+            }
         }
     }
 
