@@ -14,7 +14,9 @@ use once_cell::sync::Lazy;
 use bytes::BufMut;
 use tiny_http::{Response, Server};
 
-use crate::utils::convert_without_zeros;
+use crate::encoding::convert_to_sdi_safe_payload;
+use crate::encoding::convert_without_0_and_255;
+use crate::encoding::MAGIC_NUMBER;
 
 static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     gst::DebugCategory::new(
@@ -210,14 +212,18 @@ impl PushSrcImpl for DataSrc {
             // Map the buffer writable and create the actual samples
             let mut map = buffer.map_writable().unwrap();
             let mut data = map.as_mut_slice();
-            // let mut v = 0;
-            // (0..buffer_size).for_each(|i| {
-            //     data[i] = v;
-            //     v += 1;
-            // });
 
-            data.put_u32(convert_without_zeros(input.len() as u32));
-            data.put(input.as_bytes());
+            // Only if there is anything to send
+            if !input.is_empty() {
+                gst_info!(CAT, obj: element, "Received input and sending it out");
+
+                let safe_input = convert_to_sdi_safe_payload(input.as_bytes());
+                data.put_u32(MAGIC_NUMBER);
+                data.put_u32(convert_without_0_and_255(safe_input.len() as u32));
+                data.put(&safe_input[..]);
+            } else {
+                data.put_u32(0);
+            }
         }
 
         drop(state);

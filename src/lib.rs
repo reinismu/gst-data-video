@@ -2,7 +2,7 @@ use gst::glib;
 
 mod datasink;
 mod datasrc;
-mod utils;
+mod encoding;
 
 fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
     datasink::register(plugin)?;

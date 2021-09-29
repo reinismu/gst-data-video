@@ -10,7 +10,9 @@ use std::i32;
 
 use once_cell::sync::Lazy;
 
-use crate::utils::convert_back_with_zeros;
+use crate::encoding::convert_back_with_0_and_255;
+use crate::encoding::convert_from_sdi_safe_payload;
+use crate::encoding::MAGIC_NUMBER;
 
 static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     gst::DebugCategory::new(
@@ -136,13 +138,21 @@ impl VideoSinkImpl for DataSink {
 
         let mut data = map.as_slice();
 
-        let length = convert_back_with_zeros(data.get_u32()) as usize;
+        let number = data.get_u32();
+
+        if number != MAGIC_NUMBER {
+            return Ok(gst::FlowSuccess::Ok);
+        }
+
+        let length = convert_back_with_0_and_255(data.get_u32()) as usize;
 
         if length > buffer.size() || length == 0 {
             return Ok(gst::FlowSuccess::Ok);
         }
 
-        let content = read_null_terminated_string(&data[..length]);
+        let raw_content = convert_from_sdi_safe_payload(&data[..length]);
+        let content = std::str::from_utf8(&raw_content).unwrap().to_string();
+
         gst_info!(CAT, obj: element, "Got content {:?}", content);
 
         element
@@ -151,15 +161,4 @@ impl VideoSinkImpl for DataSink {
 
         Ok(gst::FlowSuccess::Ok)
     }
-}
-
-fn read_null_terminated_string(bytes: &[u8]) -> String {
-    let nul_range_end = bytes
-        .iter()
-        .position(|&c| c == b'\0')
-        .unwrap_or(bytes.len());
-
-    std::str::from_utf8(&bytes[0..nul_range_end])
-        .unwrap()
-        .to_string()
 }
