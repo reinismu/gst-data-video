@@ -1,6 +1,6 @@
 [package]
 name = "gst-data-video"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 description = "Plugins to pass data using video stream"
 repository = "https://github.com/reinismu/gst-data-video"
@@ -12,11 +12,10 @@ keywords = ["gstreamer", "gst", "video", "data"]
 [dependencies]
 bytes = "1.1.0"
 glib = "0.14.5"
-gst = { version = "0.17.1", package = "gstreamer"}
+gst = { version = "0.17.1", package = "gstreamer" }
 gst-base = { version = "0.17.1", package = "gstreamer-base" }
 gst-video = { version = "0.17.1", package = "gstreamer-video" }
 once_cell = "1.0"
-tiny_http = "0.8.2"
 
 [lib]
 name = "gstdatavideo"
@@ -33,3 +32,7 @@ path = "examples/data-to-decklink.rs"
 [[example]]
 name = "data-from-decklink"
 path = "examples/data-from-decklink.rs"
+
+[[example]]
+name = "src-to-sink"
+path = "examples/src-to-sink.rs"

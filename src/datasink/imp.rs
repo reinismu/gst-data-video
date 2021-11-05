@@ -44,7 +44,7 @@ impl ObjectImpl for DataSink {
                 &[String::static_type().into()],
                 glib::types::Type::UNIT.into(),
             )
-            .action()
+            // .action()
             .build()]
         });
 

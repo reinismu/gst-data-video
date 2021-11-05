@@ -6,13 +6,14 @@ use gst::{gst_debug, gst_info};
 use gst_base::prelude::*;
 use gst_base::subclass::prelude::*;
 
+use std::collections::VecDeque;
+
 use std::sync::Mutex;
 use std::{i32, u32};
 
 use once_cell::sync::Lazy;
 
 use bytes::BufMut;
-use tiny_http::{Response, Server};
 
 use crate::encoding::convert_to_sdi_safe_payload;
 use crate::encoding::convert_without_0_and_255;
@@ -42,14 +43,21 @@ impl Default for State {
 
 pub struct DataSrc {
     state: Mutex<State>,
-    server: Mutex<Server>,
+    message_queue: Mutex<VecDeque<String>>,
+}
+
+impl DataSrc {
+    fn push_message(&self, message: String) {
+        self.message_queue.lock().unwrap().push_back(message);
+    }
 }
 
 impl Default for DataSrc {
     fn default() -> DataSrc {
+        let message_queue = Mutex::new(VecDeque::with_capacity(5));
         DataSrc {
             state: Default::default(),
-            server: Mutex::new(Server::http("0.0.0.0:9600").unwrap()),
+            message_queue,
         }
     }
 }
@@ -73,6 +81,29 @@ impl ObjectImpl for DataSrc {
         // we'd like to operate in Time format
         obj.set_live(false);
         obj.set_format(gst::Format::Time);
+    }
+
+    fn signals() -> &'static [glib::subclass::Signal] {
+        static SIGNALS: Lazy<Vec<glib::subclass::Signal>> = Lazy::new(|| {
+            vec![glib::subclass::Signal::builder(
+                "send-data",
+                &[String::static_type().into()],
+                glib::types::Type::UNIT.into(),
+            )
+            .action()
+            .class_handler(|_, args| {
+                let element = args[0].get::<super::DataSrc>().expect("signal arg");
+                let data = args[1].get::<String>().expect("signal arg");
+
+                let datasrc = DataSrc::from_instance(&element);
+                datasrc.push_message(data);
+
+                None
+            })
+            .build()]
+        });
+
+        SIGNALS.as_ref()
     }
 }
 
@@ -185,17 +216,13 @@ impl PushSrcImpl for DataSrc {
             Some(ref info) => info.clone(),
         };
 
-        let server = self.server.lock().unwrap();
-
-        let mut input = String::new();
-
-        let request = server.try_recv().unwrap();
-        if let Some(request) = request {
-            let mut request = request;
-            request.as_reader().read_to_string(&mut input).unwrap();
-            let response = Response::from_string("Received");
-            request.respond(response).unwrap();
-        }
+        let input = {
+            self.message_queue
+                .lock()
+                .unwrap()
+                .pop_front()
+                .unwrap_or_else(|| "".to_string())
+        };
 
         let buffer_size = (info.width() as usize) * (info.height() as usize) * 4;
 
