@@ -3,6 +3,7 @@
 ## How it works?
 
 `datasrc` waits for `send-data` action and sends it down the line.
+
 `datasink` reads each incoming frame, checks Magic number, decodes content and signals it. (Check _examples/data-from-decklink.rs_)
 
 ## Example usage
